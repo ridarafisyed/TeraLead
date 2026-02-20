@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: teralead
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - '5433:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/teralead
+      JWT_SECRET: super-secret-change-me
+      JWT_EXPIRES_IN: 1d
+      FRONTEND_URL: http://localhost:3000
+      AI_SERVICE_URL: http://ai-service:8000
+      AI_TIMEOUT_MS: 3500
+    ports:
+      - '4000:4000'
+    depends_on:
+      - postgres
+      - ai-service
+
+  frontend:
+    build:
+      context: ./frontend
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:4000
+    ports:
+      - '3000:3000'
+    depends_on:
+      - backend
+
+  ai-service:
+    build:
+      context: ./ai-service
+    restart: unless-stopped
+    environment:
+      AI_PROVIDER: mock
+    ports:
+      - '8000:8000'
+
+volumes:
+  postgres_data:
